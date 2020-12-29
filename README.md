@@ -1,6 +1,6 @@
-# kafkaTestData #
+# jdbcConnectorPlayground #
 
-Welcome to kafkaTestData!
+Welcome to jdbcConnectorPlayground!
 
 ## Contribution policy ##
 

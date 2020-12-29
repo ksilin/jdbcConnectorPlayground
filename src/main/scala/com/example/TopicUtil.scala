@@ -11,11 +11,11 @@ import scala.concurrent.duration.DurationInt
 import scala.jdk.javaapi.CollectionConverters.asJava
 import scala.util.Try
 
-object TestHelper extends LogSupport with FutureConverter {
+object TopicUtil extends LogSupport with FutureConverter {
 
   def createTopic(
-                   topicName: String,
                    adminClient: AdminClient,
+                   topicName: String,
                    numberOfPartitions: Int = 1,
                    replicationFactor: Short = 1
                  ): Unit =
@@ -39,7 +39,7 @@ object TestHelper extends LogSupport with FutureConverter {
       info(s"topic $topicName already exists, skipping")
     }
 
-  def deleteTopic(topicName: String, adminClient: AdminClient): Any = {
+  def deleteTopic(adminClient: AdminClient, topicName: String): Any = {
     debug(s"deleting topic $topicName")
     try {
       val topicDeletionResult = adminClient.deleteTopics(List(topicName).asJava)

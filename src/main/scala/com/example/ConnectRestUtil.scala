@@ -1,15 +1,18 @@
 package com.example
 
+import com.example.ConnectConfigs.ConnectorStatus
 import io.circe
+import sttp.capabilities
 import sttp.client3._
 import sttp.client3.okhttp.OkHttpSyncBackend
 import sttp.client3.circe._
-import sttp.model.{ Headers, MediaType, Uri }
+import circe.generic.auto._
+import sttp.model.{Headers, MediaType, Uri}
 import wvlet.log.LogSupport
 
 case class ConnectRestUtil(host: String, port: Int) extends LogSupport {
 
-  val backend = OkHttpSyncBackend()
+  val backend: SttpBackend[Identity, capabilities.WebSockets] = OkHttpSyncBackend()
 
   val baseUrl = uri"http://$host:$port"
 
@@ -85,10 +88,9 @@ case class ConnectRestUtil(host: String, port: Int) extends LogSupport {
   def connectorExists(connectorName: String): Boolean =
     listConnectors().contains(connectorName)
 
-  def connectorStatus(connectorName: String): Option[String] = {
-    val reqT                                            = basicRequest.get(connectorsUrl.addPath(connectorName, status)).response(asString)
-    val res: Identity[Response[Either[String, String]]] = reqT.send(backend)
-
+  def connectorStatus(connectorName: String): Option[ConnectorStatus] = {
+    val reqT                                            = basicRequest.get(connectorsUrl.addPath(connectorName, status)).response(asJson[ConnectorStatus])
+    val res: Identity[Response[Either[ResponseException[String, circe.Error], ConnectorStatus]]] = reqT.send(backend)
     if (!res.isSuccess) {
       logFailedRequest(res)
       None
