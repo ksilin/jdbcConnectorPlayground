@@ -7,7 +7,7 @@ import sttp.client3._
 import sttp.client3.okhttp.OkHttpSyncBackend
 import sttp.client3.circe._
 import circe.generic.auto._
-import sttp.model.{Headers, MediaType, Uri}
+import sttp.model.{ Headers, MediaType, Uri }
 import wvlet.log.LogSupport
 
 case class ConnectRestUtil(host: String, port: Int) extends LogSupport {
@@ -89,8 +89,11 @@ case class ConnectRestUtil(host: String, port: Int) extends LogSupport {
     listConnectors().contains(connectorName)
 
   def connectorStatus(connectorName: String): Option[ConnectorStatus] = {
-    val reqT                                            = basicRequest.get(connectorsUrl.addPath(connectorName, status)).response(asJson[ConnectorStatus])
-    val res: Identity[Response[Either[ResponseException[String, circe.Error], ConnectorStatus]]] = reqT.send(backend)
+    val reqT = basicRequest
+      .get(connectorsUrl.addPath(connectorName, status))
+      .response(asJson[ConnectorStatus])
+    val res: Identity[Response[Either[ResponseException[String, circe.Error], ConnectorStatus]]] =
+      reqT.send(backend)
     if (!res.isSuccess) {
       logFailedRequest(res)
       None

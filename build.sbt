@@ -10,7 +10,6 @@ lazy val jdbcConnectorPlayground =
       libraryDependencies ++= Seq(
         library.clients,
         library.kafka,
-        // library.kafkaStreamsExamples,
         library.pureConfig,
         library.betterFiles,
         library.avro4s,
@@ -45,7 +44,7 @@ lazy val library =
   new {
 
     object Version {
-      val kafka          = "2.6.0"
+      val kafka          = "2.7.0"
       val confluent      = "6.0.1"
       val scalatest      = "3.2.0"
       val pureConfig     = "0.14.0"
@@ -78,7 +77,7 @@ lazy val library =
     val quill             = "io.getquill"                   %% "quill-jdbc"            % Version.quill
     val mysqlConnector    = "mysql"                          % "mysql-connector-java"  % Version.mySqlConnector
     val airframeLog       = "org.wvlet.airframe"            %% "airframe-log"          % Version.airframeLog
-    val logback           = "ch.qos.logback"                 % "logback-core"          % Version.logback
+    val logback           = "ch.qos.logback"                 % "logback-classic"          % Version.logback
     val randomDataGen     = "com.danielasfregola"           %% "random-data-generator" % "2.9"
     val scalaFaker        = "io.github.etspaceman"          %% "scalacheck-faker"      % "6.0.0"
 

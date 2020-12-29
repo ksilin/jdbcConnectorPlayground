@@ -3,7 +3,7 @@ package com.example
 import io.circe.Json
 import io.circe.syntax._
 import io.circe.generic.auto._
-import io.circe.generic.extras.{Configuration, ConfiguredJsonCodec}
+import io.circe.generic.extras.{ Configuration, ConfiguredJsonCodec }
 
 import java.util.regex.Pattern
 
@@ -44,8 +44,8 @@ object ConnectConfigs {
       consumerOverrideFetchMaxWaitMs: Int = 10, // 500 by default
       consumerOverrideMaxPollRecords: Int = 1,
       consumerOverrideEnableAutoCommit: Boolean = false // we dont want to commit any offsets
-  ){
-    val json: Json = this.asJson.dropNullValues
+  ) {
+    val json: Json         = this.asJson.dropNullValues
     val jsonString: String = json.noSpaces
   }
 

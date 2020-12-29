@@ -7,13 +7,13 @@ object TestData {
   case class Product(id: String, description: String)
   case class ProductOptional(id: Option[String] = None, description: Option[String] = None)
   case class Order(
-                    id: String,
-                    userId: String,
-                    prodId: String,
-                    amount: Int,
-                    location: String,
-                    timestamp: Long
-                  )
+      id: String,
+      userId: String,
+      prodId: String,
+      amount: Int,
+      location: String,
+      timestamp: Long
+  )
   case class Shipment(id: String, orderId: String, warehouse: String, timestamp: Long)
   case class Click(userId: String, element: String, userAgent: String, timestamp: Long)
 }

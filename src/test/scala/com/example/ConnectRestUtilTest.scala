@@ -65,7 +65,7 @@ class ConnectRestUtilTest
   }
 
   "must delete connector" in {
-    val connectorName = "mysql-sink-todelete"
+    val connectorName   = "mysql-sink-todelete"
     val connectorString = sinkConnectorConfig.asJson.noSpaces
     val createdOrUpdated: Option[String] =
       connectRestUtil.createOrUpdateConnector(connectorName, connectorString)
