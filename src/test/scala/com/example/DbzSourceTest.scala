@@ -41,7 +41,7 @@ class DbzSourceTest
   private val adminProperties: Properties   = adminConfig.toProperties
   val adminClient: AdminClient              = AdminClient.create(adminProperties)
 
-  val baseConnectorConfig: DbzSourceConfig = DbzSourceConfig()
+  val baseConnectorConfig: DbzSourceConfig = DbzSourceConfig(includeQuery = true)
 
   private def prepareConnectorTopicAndTable(connectorName: String) = {
     connectRestUtil.deleteConnector(connectorName)

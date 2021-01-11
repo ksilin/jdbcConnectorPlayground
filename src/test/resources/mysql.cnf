@@ -45,4 +45,4 @@ binlog_format     = row
 binlog_row_image  = full
 gtid_mode         = ON
 enforce_gtid_consistency=ON
-session_track_gtids = OWN_GTID
+session_track_gtids = ALL_GTIDS
