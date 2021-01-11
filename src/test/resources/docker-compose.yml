@@ -122,6 +122,24 @@ services:
     ports:
       - 3306:3306
 
+  mysql2:
+    image: mysql:5.7
+    hostname: mysql2
+    container_name: mysql2
+    volumes:
+      - ./mysql2.cnf:/etc/mysql/conf.d/custom.cnf
+      - ./mysql-init.sql:/docker-entrypoint-initdb.d/mysql-init.sql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_PORT: password
+      MYSQL_ROOT_HOST: 172.%  # Allow docker containers to connect to mysql
+    # https://docs.ksqldb.io/en/latest/operate-and-deploy/installation/install-ksqldb-with-docker/
+    ports:
+      - 6603:6603
+
   ksqldb-server:
     image: confluentinc/ksqldb-server:latest
     hostname: ksqldb-server

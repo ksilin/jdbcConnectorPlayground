@@ -79,6 +79,13 @@ case class JdbcHelper(ctx: MysqlJdbcContext[SnakeCase.type]) extends LogSupport 
     )
   }
 
+  def getGtid: String = {
+    val showVarsSql =
+      s"""SHOW GLOBAL VARIABLES LIKE 'gtid_executed'""".stripMargin
+    val variables: List[(String, String)] = ctx.executeQuery[(String, String)](showVarsSql, extractor = variableExtractor)
+    variables.head._2.takeWhile(_ != ':')
+  }
+
   val metadataExtractor: ResultSet => Unit = (rr: ResultRow) => {
     val meta     = rr.getMetaData
     val colCount = meta.getColumnCount
@@ -94,6 +101,10 @@ case class JdbcHelper(ctx: MysqlJdbcContext[SnakeCase.type]) extends LogSupport 
       info("column type: " + meta.getColumnType(colNum).toString)
       info("column type name: " + meta.getColumnTypeName(colNum))
     }
+  }
+
+  val variableExtractor: ResultSet => (String, String) = (rr: ResultRow) => {
+    (rr.getString("Variable_name"), rr.getString("Value"))
   }
 
 }

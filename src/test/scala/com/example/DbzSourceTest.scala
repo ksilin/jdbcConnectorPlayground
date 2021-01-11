@@ -2,7 +2,7 @@ package com.example
 
 import com.example.ConnectConfigs.DbzSourceConfig
 import com.typesafe.config.{ Config, ConfigFactory }
-import io.getquill.{ Insert, MysqlJdbcContext, SnakeCase }
+import io.getquill.{ MysqlJdbcContext, SnakeCase }
 import org.apache.avro.generic.GenericData.Record
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
@@ -17,6 +17,7 @@ import java.time
 import java.util.Properties
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.util.Random
 
 case class SimpleTestData(id: Int, data: String)
 
@@ -34,9 +35,6 @@ class DbzSourceTest
 
   val connectRestUtil: ConnectRestUtil = ConnectRestUtil("localhost", 8083)
 
-  private val producerConfigFull: Config = ConfigFactory.load("producer.conf")
-  private val prodProps                  = producerConfigFull.getConfig("producer-config").toProperties
-
   private val adminClientConfigFull: Config = ConfigFactory.load("admin.conf")
   private val adminConfig: Config           = adminClientConfigFull.getConfig("admin-config")
   private val adminProperties: Properties   = adminConfig.toProperties
@@ -44,36 +42,47 @@ class DbzSourceTest
 
   val baseConnectorConfig: DbzSourceConfig = DbzSourceConfig(includeQuery = true)
 
-  private def prepareConnectorTopicAndTable(connectorName: String) = {
+  val targetTopic = "dbserver1.db.simple_test_data"
+
+  val tableName = "simple_test_data"
+  val createTableSql: String =
+    s"""CREATE TABLE IF NOT EXISTS $tableName (
+       | id INT PRIMARY KEY,
+       | data VARCHAR(255)
+       |)""".stripMargin
+
+  val commonConsumerProps = new Properties()
+  commonConsumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092")
+  commonConsumerProps.put(
+    ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+    "org.apache.kafka.common.serialization.StringDeserializer"
+  )
+  commonConsumerProps.put(
+    ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+    "io.confluent.kafka.serializers.KafkaAvroDeserializer"
+  )
+  commonConsumerProps.put(
+    "schema.registry.url",
+    "http://localhost:8081"
+  ) // we use the default value of
+  commonConsumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+
+  private def deleteConnector(connectorName: String) = {
     connectRestUtil.deleteConnector(connectorName)
     connectRestUtil.connectorExists(connectorName) mustBe false
-
-    TopicUtil.truncateTopic(adminClient, connectorName, 1)
-    TopicUtil.doesTopicExist(adminClient, connectorName) mustBe true
-    jdbcHelper.dropTable(connectorName)
-    jdbcHelper.doesTableExist2(connectorName) mustBe false
   }
 
   "records inserted into table must be copied to topic " in {
 
     val connectorName = "dbzConnector"
-    val tableName     = "simple_test_data"
-    prepareConnectorTopicAndTable(connectorName)
-
-    val createTableSql =
-      s"""CREATE TABLE IF NOT EXISTS $tableName (
-         | id INT PRIMARY KEY,
-         | data VARCHAR(255)
-         |)""".stripMargin
-
+    deleteConnector(connectorName)
+    TopicUtil.deleteTopic(adminClient, targetTopic)
     ctx.executeAction(createTableSql)
 
     // TODO - how does DBZ connector autocreate its target topics?
-
-    TopicUtil.deleteTopic(adminClient, connectorName)
-    TopicUtil.doesTopicExist(adminClient, connectorName) mustBe false
-
-    val dbzSourceConfig       = baseConnectorConfig.copy(tableIncludeList = Some(connectorName))
+    val dbzSourceConfig = baseConnectorConfig.copy(
+      tableIncludeList = Some(tableName)
+    )
     val connectorConfigString = dbzSourceConfig.jsonString
     info(connectorConfigString)
 
@@ -85,7 +94,7 @@ class DbzSourceTest
     // jdbcHelper.doesTableExist2(connectorName) mustBe true
     // TopicUtil.doesTopicExist(adminClient, connectorName) mustBe true
 
-    val data = SimpleTestData(123, "+1510488988")
+    val data = SimpleTestData(345, "eorgjeor")
 
     import ctx._
     val x: Long = ctx.transaction {
@@ -104,16 +113,119 @@ class DbzSourceTest
     val listings: mutable.Map[String, TopicListing] = listTopics.namesToListings().get().asScala
     listings.filterNot(_._1.startsWith("_")) foreach println
 
-    val consumerProps = new Properties()
-    consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092")
-    consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "AvroSpecGroup1")
+    val consumerProps = commonConsumerProps.clone().asInstanceOf[Properties]
     consumerProps.put(
-      ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-      "org.apache.kafka.common.serialization.StringDeserializer"
+      ConsumerConfig.GROUP_ID_CONFIG,
+      "AvroSpecGroup10" + Random.alphanumeric.take(10).mkString
     )
+    val consumer = new KafkaConsumer[String, GenericRecord](consumerProps)
+    consumer.subscribe(List(targetTopic).asJava)
+    fetchAndLogRecords(consumer)
+  }
+
+  "filtering by gtid" in {
+
+    val connectorName = "correctGtidConnector"
+    deleteConnector(connectorName)
+    TopicUtil.deleteTopic(adminClient, targetTopic)
+
+    val createTableSql =
+      s"""CREATE TABLE IF NOT EXISTS $tableName (
+         | id INT PRIMARY KEY,
+         | data VARCHAR(255)
+         |)""".stripMargin
+
+    ctx.executeAction(createTableSql)
+
+    val uuid = jdbcHelper.getGtid
+    val dbzSourceConfig = baseConnectorConfig.copy(
+      tableIncludeList = Some(tableName),
+      gtidSourceIncludes = Some(uuid)
+    )
+    val connectorConfigString = dbzSourceConfig.jsonString
+    info(connectorConfigString)
+    connectRestUtil.createOrUpdateConnector(
+      connectorName,
+      connectorConfigString
+    )
+    connectRestUtil.connectorExists(connectorName) mustBe true
+
+    val data = SimpleTestData(789, "dgfehwkd")
+
+    {
+      import ctx._
+      val x: Long = ctx.transaction {
+        ctx.run(query[SimpleTestData].insert(lift(data)).onConflictIgnore(_.id))
+      }
+      info(s"written $x records to DB")
+      val res: List[SimpleTestData] = ctx.run(query[SimpleTestData])
+      info("found data in DB")
+      res foreach println
+    }
+
+    val consumerProps = commonConsumerProps.clone().asInstanceOf[Properties]
     consumerProps.put(
-      ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-      "io.confluent.kafka.serializers.KafkaAvroDeserializer"
+      ConsumerConfig.GROUP_ID_CONFIG,
+      "AvroSpecGroup20" + Random.alphanumeric.take(10).mkString
+    )
+    val consumer = new KafkaConsumer[String, GenericRecord](consumerProps)
+    consumer.subscribe(List(targetTopic).asJava)
+    fetchAndLogRecords(consumer)
+  }
+
+  "filtering by gtid - wrong UUID" in {
+
+    val connectorName1 = "wrongGtidConnector"
+    deleteConnector(connectorName1)
+    TopicUtil.deleteTopic(adminClient, targetTopic)
+
+    val createTableSql =
+      s"""CREATE TABLE IF NOT EXISTS $tableName (
+         | id INT PRIMARY KEY,
+         | data VARCHAR(255)
+         |)""".stripMargin
+
+    ctx.executeAction(createTableSql)
+
+    val uuid1 = jdbcHelper.getGtid
+    info(uuid1)
+
+    // This UUID does not exist -> connector shoudl not produce any data
+    val dbzSourceConfig1 = baseConnectorConfig.copy(
+      tableIncludeList = Some(tableName),
+      gtidSourceIncludes = Some("not_a_UUID")
+    )
+    val connectorConfigString1 = dbzSourceConfig1.jsonString
+    info(connectorConfigString1)
+    connectRestUtil.createOrUpdateConnector(
+      connectorName1,
+      connectorConfigString1
+    )
+    connectRestUtil.connectorExists(connectorName1) mustBe true
+
+    val data = SimpleTestData(789, "dgfehwkd")
+
+    {
+      import ctx._
+      val x: Long = ctx.transaction {
+        ctx.run(query[SimpleTestData].insert(lift(data)).onConflictIgnore(_.id))
+      }
+      info(s"written $x records to DB1")
+      val res: List[SimpleTestData] = ctx.run(query[SimpleTestData])
+      info("found data in DB 1")
+      res foreach println
+    }
+
+    val consumerProps = commonConsumerProps.clone().asInstanceOf[Properties]
+    consumerProps.put(
+      ConsumerConfig.GROUP_ID_CONFIG,
+      "AvroSpecGroup30" + Random.alphanumeric.take(10).mkString
+    )
+    val consumer = new KafkaConsumer[String, GenericRecord](consumerProps)
+    consumer.subscribe(List(targetTopic).asJava)
+    fetchAndLogRecords(consumer)
+  }
+
     )
     consumerProps.put("schema.registry.url", "http://localhost:8081") // we use the default value of
     consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
@@ -121,10 +233,13 @@ class DbzSourceTest
     val consumer = new KafkaConsumer[String, GenericRecord](consumerProps)
     consumer.subscribe(List("dbserver1.db.simple_test_data").asJava)
 
-    val duration: time.Duration = java.time.Duration.ofMillis(100)
-    var found                   = false
-    var attempts                = 0
-    val maxAttempts             = 100
+  def fetchAndLogRecords(
+      consumer: KafkaConsumer[String, GenericRecord],
+      duration: time.Duration = java.time.Duration.ofMillis(100),
+      maxAttempts: Int = 100
+  ): Unit = {
+    var found    = false
+    var attempts = 0
     // needs btw 3 and 4 seconds to receive first data
     while (!found && attempts < maxAttempts) {
       val records: ConsumerRecords[String, GenericRecord] = consumer.poll(duration)
@@ -135,11 +250,14 @@ class DbzSourceTest
         info(s"fetched ${records.count()} records on attempt $attempts")
         info("printing records")
         records.asScala foreach { r =>
-          println(r)
+          info(r.value())
           val source: Record = r.value().get("source").asInstanceOf[Record]
-          println(s"gtid: ${source.get("gtid")}")
+          info(s"gtid: ${source.get("gtid")}")
         }
       }
+    }
+    if (attempts >= maxAttempts) {
+      warn("retries exhausted, no data has been written to the topic")
     }
   }
 

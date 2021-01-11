@@ -77,8 +77,8 @@ object ConnectConfigs {
       tableIncludeList: Option[String] = None,    // "mydb",
       includeSchemaChanges: Boolean = true,
       includeQuery: Boolean = false,
-      messageKeyColumns: Option[String] = None
-      // gtid.source.includes <- A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server
+      messageKeyColumns: Option[String] = None,
+      gtidSourceIncludes: Option[String] = None
   ){
     val json: Json         = this.asJson.dropNullValues
     val jsonString: String = json.noSpaces
