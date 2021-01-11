@@ -3,6 +3,7 @@ package com.example
 import com.example.ConnectConfigs.DbzSourceConfig
 import com.typesafe.config.{ Config, ConfigFactory }
 import io.getquill.{ Insert, MysqlJdbcContext, SnakeCase }
+import org.apache.avro.generic.GenericData.Record
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
@@ -53,7 +54,7 @@ class DbzSourceTest
     jdbcHelper.doesTableExist2(connectorName) mustBe false
   }
 
-  "creating the connector and a table" in {
+  "records inserted into table must be copied to topic " in {
 
     val connectorName = "dbzConnector"
     val tableName     = "simple_test_data"
@@ -133,7 +134,11 @@ class DbzSourceTest
       if (found) {
         info(s"fetched ${records.count()} records on attempt $attempts")
         info("printing records")
-        records.asScala foreach println
+        records.asScala foreach { r =>
+          println(r)
+          val source: Record = r.value().get("source").asInstanceOf[Record]
+          println(s"gtid: ${source.get("gtid")}")
+        }
       }
     }
   }
