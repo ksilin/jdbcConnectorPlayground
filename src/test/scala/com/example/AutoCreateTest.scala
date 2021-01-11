@@ -18,8 +18,6 @@ import wvlet.log.LogSupport
 
 import java.util.Properties
 
-case class SimpleTestData(id: Int, data: String)
-
 class AutoCreateTest
     extends AnyFreeSpec
     with Matchers

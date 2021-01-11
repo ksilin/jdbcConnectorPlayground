@@ -58,4 +58,30 @@ object ConnectConfigs {
       tasks: List[TaskState]
   )
 
+  // https://debezium.io/documentation/reference/1.4/connectors/mysql.html#mysql-connector-properties
+
+  // https://github.com/vdesabou/kafka-docker-playground-connect contains DBZ 1.3.1
+  @ConfiguredJsonCodec
+  case class DbzSourceConfig(
+      connectorClass: String = "io.debezium.connector.mysql.MySqlConnector",
+      tasksMax: Int = 1,
+      databaseHostname: String = "mysql",
+      databasePort: String = "3306",
+      databaseUser: String = "debezium",
+      databasePassword: String = "dbz",
+      databaseServerId: String = "223344",
+      databaseServerName: String = "dbserver1",
+      databaseHistoryKafkaBootstrapServers: String = "broker:9092",
+      databaseHistoryKafkaTopic: String = "schema-changes.mydb",
+      databaseIncludeList: Option[String] = None, // "mydb",
+      tableIncludeList: Option[String] = None,    // "mydb",
+      includeSchemaChanges: Boolean = true,
+      includeQuery: Boolean = false,
+      messageKeyColumns: Option[String] = None
+      // gtid.source.includes <- A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server
+  ){
+    val json: Json         = this.asJson.dropNullValues
+    val jsonString: String = json.noSpaces
+  }
+
 }
