@@ -72,7 +72,7 @@ class DbzSourceTest
     connectRestUtil.connectorExists(connectorName) mustBe false
   }
 
-  "records inserted into table must be copied to topic " in {
+  "records inserted into table must be copied to topic" in {
 
     val connectorName = "dbzConnector"
     deleteConnector(connectorName)
@@ -94,7 +94,7 @@ class DbzSourceTest
     // jdbcHelper.doesTableExist2(connectorName) mustBe true
     // TopicUtil.doesTopicExist(adminClient, connectorName) mustBe true
 
-    val data = SimpleTestData(345, "eorgjeor")
+    val data = SimpleTestData(111, "eorgjeor")
 
     import ctx._
     val x: Long = ctx.transaction {
@@ -138,6 +138,7 @@ class DbzSourceTest
     ctx.executeAction(createTableSql)
 
     val uuid = jdbcHelper.getGtid
+    info(s"UUID: $uuid")
     val dbzSourceConfig = baseConnectorConfig.copy(
       tableIncludeList = Some(tableName),
       gtidSourceIncludes = Some(uuid)
@@ -150,7 +151,7 @@ class DbzSourceTest
     )
     connectRestUtil.connectorExists(connectorName) mustBe true
 
-    val data = SimpleTestData(789, "dgfehwkd")
+    val data = SimpleTestData(222, "dgfehwkd")
 
     {
       import ctx._
@@ -203,7 +204,7 @@ class DbzSourceTest
     )
     connectRestUtil.connectorExists(connectorName1) mustBe true
 
-    val data = SimpleTestData(789, "dgfehwkd")
+    val data = SimpleTestData(333, "dgfehwkd")
 
     {
       import ctx._
