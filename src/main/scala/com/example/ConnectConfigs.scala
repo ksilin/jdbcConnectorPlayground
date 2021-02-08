@@ -49,6 +49,30 @@ object ConnectConfigs {
     val jsonString: String = json.noSpaces
   }
 
+
+  @ConfiguredJsonCodec
+  case class JdbcSourceConfig(
+                             connectionUrl: String,
+                             valueConverter: String,
+                             keyConverter: String = "org.apache.kafka.connect.storage.StringConverter",
+                             connectorClass: String = "io.confluent.connect.jdbc.JdbcSourceConnector",
+                             mode: String = "bulk",
+                             catalogPattern: Option[String] = None,
+                             schemaPattern: Option[String] = None,
+                             tableWhitelist: String = "",
+                             tableBlacklist: String = "",
+                             pollIntervalMs: Int = 100,
+                             tablePollIntervalMs: Int = 10000,
+                             topicPrefix: String = "jdbcSource_",
+                             tasksMax: Int = 1,
+                             batchMaxRows: Int = 10,
+                             errorsLogEnable: Boolean = true,
+                             errorsLogIncludeMessages: Boolean = true,
+                           ) {
+    val json: Json         = this.asJson.dropNullValues
+    val jsonString: String = json.noSpaces
+  }
+
   case class ConnectorState(state: String, worker_id: String)
   case class TaskState(id: Int, state: String, worker_id: String, trace: Option[String] = None)
   case class ConnectorStatus(

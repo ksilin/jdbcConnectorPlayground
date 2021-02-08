@@ -1,9 +1,11 @@
 package com.example
 
-import org.apache.kafka.clients.admin.{ AdminClient, CreateTopicsResult, NewTopic }
+import org.apache.kafka.clients.admin.{AdminClient, CreateTopicsResult, NewTopic}
+import org.apache.kafka.clients.consumer.{Consumer, ConsumerRecord, ConsumerRecords}
 import org.apache.kafka.common.config.TopicConfig
 import wvlet.log.LogSupport
 
+import java.time
 import java.util.Collections
 import scala.jdk.CollectionConverters._
 import scala.concurrent.Await
@@ -100,5 +102,30 @@ object TopicUtil extends LogSupport with FutureConverter {
       val names = Await.result(adminClient.listTopics().names().toScalaFuture, 10.seconds)
       names.contains(topic)
     }
+
+  def fetchAndPrintRecords[K, V](consumer: Consumer[K, V]): Iterable[ConsumerRecord[K, V]] = {
+    val duration: time.Duration = java.time.Duration.ofMillis(100)
+    var found                   = false
+    var records: Iterable[ConsumerRecord[K, V]] = Nil
+    var attempts                = 0
+    val maxAttempts             = 100
+    while (!found && attempts < maxAttempts) {
+      val consumerRecords: ConsumerRecords[K, V] = consumer.poll(duration)
+
+      attempts = attempts + 1
+      found = !consumerRecords.isEmpty
+      if (found) {
+        info(s"fetched ${consumerRecords.count()} records on attempt $attempts")
+        records = consumerRecords.asScala
+        records foreach { r =>
+          info(s"${r.topic()} | ${r.partition()} | ${r.offset()}: ${r.key()} | ${r.value()}")
+        }
+      }
+    }
+    if(attempts >= maxAttempts){
+      info(s"no data received in $attempts attempts")
+    }
+    records
+  }
 
 }

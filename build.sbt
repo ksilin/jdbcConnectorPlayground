@@ -13,6 +13,7 @@ lazy val jdbcConnectorPlayground =
         library.pureConfig,
         library.betterFiles,
         library.avro4s,
+        library.avro4sKafka,
         library.kafkaAvroSerializer,
         library.kafkaJsonSchemaSerializer,
         library.circe,
@@ -67,6 +68,7 @@ lazy val library =
     val circeGenericExtras  = "io.circe"              %% "circe-generic-extras"  % Version.circe
     val circeParser         = "io.circe"              %% "circe-parser"          % Version.circe
     val avro4s              = "com.sksamuel.avro4s"   %% "avro4s-core"           % Version.avro4s
+    val avro4sKafka              = "com.sksamuel.avro4s"   %% "avro4s-kafka"           % Version.avro4s
     val kafkaAvroSerializer = "io.confluent"           % "kafka-avro-serializer" % Version.confluent
     val ksqlDbTestUtil      = "io.confluent.ksql"      % "ksqldb-test-util"      % Version.confluent
     val kafkaJsonSchemaSerializer =

@@ -65,6 +65,10 @@ case class JdbcHelper(ctx: MysqlJdbcContext[SnakeCase.type]) extends LogSupport 
   def dropTable(tableName: String): Long =
     ctx.executeAction(s"DROP TABLE IF EXISTS $tableName")
 
+  def createTable(tableDdl: String): Long =
+    ctx.executeAction(s"CREATE TABLE IF NOT EXISTS $tableDdl")
+
+
   def describeTable(tableName: String): List[DescribeResult] =
     ctx.executeQuery[DescribeResult](
       s"describe $tableName",
